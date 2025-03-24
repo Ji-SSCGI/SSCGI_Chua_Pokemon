@@ -16,9 +16,46 @@ class Pokemon {
         damage = damage < 0 ? 0 : damage;
         defender.hp -= damage;
         if (defender.hp < 0) defender.hp = 0;
-        console.log(`${this.name} uses ${move.name} and deals ${damage.toFixed()} damage to ${defender.name}.
-        ${defender.name} has ${defender.hp.toFixed()} HP left.`);
+
+        let damageColor = this.getDamageColor(advantage);
+        let defenderStatus = defender.hp <= 0 ? "fainted" : `${defender.hp.toFixed()} HP left`;
+
+        console.log(`${this.colorizeText(this.name)} uses ${move.name} and deals ${this.colorizeText(damage.toFixed(), damageColor)} damage to ${this.colorizeText(defender.name, defender.type)}.`);
+        console.log(`${this.colorizeText(defender.name, defender.type)} ${defenderStatus}`);
+
         return defender.hp <= 0;
+    }
+
+    // Get color for damage based on effectiveness
+    getDamageColor(advantage) {
+        if (advantage === 2) return 'red';  // Super Effective
+        if (advantage === 0.5) return 'blue';  // Not Effective
+        return 'white';  // Normal
+    }
+
+    // Colorize text based on Pokémon type or damage
+    colorizeText(text, typeOrColor = this.type) {
+        let colorCode = this.getColorCode(typeOrColor);
+        return `${colorCode}${text}\x1b[0m`;  // Reset color after text
+    }
+
+    // Determine the color code based on Pokémon type or specific color
+    getColorCode(typeOrColor) {
+        switch (typeOrColor) {
+            case 'Fire': return '\x1b[31m';  // Red
+            case 'Water': return '\x1b[34m';  // Blue
+            case 'Electric': return '\x1b[33m';  // Yellow
+            case 'Grass': return '\x1b[32m';  // Green
+            case 'Rock': return '\x1b[37m';  // Gray
+            case 'Bug': return '\x1b[35m';  // Purple
+            case 'Normal': return '\x1b[90m';  // Gray
+            case 'Ground': return '\x1b[33m';  // Yellow
+            case 'red': return '\x1b[31m';  // Red (for damage)
+            case 'blue': return '\x1b[34m';  // Blue (for damage)
+            case 'green': return '\x1b[32m';  // Green (for normal)
+            case 'white': return '\x1b[37m';  // Default white color
+            default: return '\x1b[37m';  // Default to white
+        }
     }
 }
 
@@ -27,7 +64,7 @@ class Trainer {
         this.name = name;
         this.pokemons = pokemons.map(pokemon => Object.assign(Object.create(Object.getPrototypeOf(pokemon)), pokemon));
         this.currentPokemonIndex = 0;
-        this.score = score;
+        this.score = 0;
     }
 
     getCurrentPokemon() {
@@ -38,7 +75,7 @@ class Trainer {
         for (let i = 0; i < this.pokemons.length; i++) {
             if (this.pokemons[i].hp > 0) {
                 this.currentPokemonIndex = i;
-                console.log(`${this.name} sends out ${this.pokemons[i].name}!!`);
+                console.log(`${this.name} sends out ${this.colorizeText(this.pokemons[i].name, this.pokemons[i].type)}!!`);
                 return;
             }
         }
@@ -56,7 +93,30 @@ class Trainer {
     }
 
     addWin() {
-        this.score += 1;
+        // Ensure the score is correctly incremented
+        if (typeof this.score === 'number') {
+            this.score += 1;
+        } else {
+            console.error(`Invalid score value for ${this.name}`);
+        }
+    }
+
+    colorizeText(text, type) {
+        let colorCode = this.getColorCode(type);
+        return `${colorCode}${text}\x1b[0m`;
+    }
+
+    getColorCode(type) {
+        switch (type) {
+            case 'Fire': return '\x1b[31m';  // Red
+            case 'Water': return '\x1b[34m';  // Blue
+            case 'Electric': return '\x1b[33m';  // Yellow
+            case 'Grass': return '\x1b[32m';  // Green
+            case 'Rock': return '\x1b[37m';  // Gray
+            case 'Bug': return '\x1b[35m';  // Purple
+            case 'Normal': return '\x1b[90m';  // Gray
+            default: return '\x1b[37m';  // Default to white
+        }
     }
 }
 
@@ -177,13 +237,12 @@ function typeAdvantage(attackerType, defenderType) {
 
 function battle(attacker, defender) {
     console.log("");
-    console.log(`Battle starts! ${attacker.name} vs ${defender.name} `);
+    console.log(`${attacker.colorizeText('Battle starts!')} ${attacker.name} 🆚 ${defender.name}`);
 
     while (attacker.hp > 0 && defender.hp > 0) {
         let move = attacker.moves[Math.floor(Math.random() * attacker.moves.length)];
         let defenderFainted = attacker.useMove(move, defender);
         if (defenderFainted) {
-            console.log(`${defender.name} has fainted! °⭒˚`);
             break;
         }
 
@@ -221,53 +280,13 @@ function simulateBattle(trainer1, trainer2) {
 
     if (trainer1.hasPokemonsLeft()) {
         trainer1.addWin();
-        console.log(`\n🏆 Trainer ${trainer1.name} wins the battle!`);
+        console.log(`\n Trainer ${trainer1.name} wins the battle!`);
     } else if (trainer2.hasPokemonsLeft()) {
         trainer2.addWin();
-        console.log(`\n🏆 Trainer ${trainer2.name} wins the battle!`);
+        console.log(`\n Trainer ${trainer2.name} wins the battle!`);
     } else {
-        console.log("\n🤝 The battle ends in a draw!");
+        console.log("\n The battle ends in a draw!");
     }
-}
-
-// Simulate Tournament
-function simulateTournament(trainers) {
-    let trainerCount = prompt("Welcome to the Pokémon Tournament! Press enter number of trainers to start the tournament.");
-    getRandomTrainer(trainers, trainerCount);
-    if (trainerCount < 3) {
-        console.log("Tournament requires at least 2 trainers.");
-        return;
-    }
-    else if (trainerCount == 3) {
-        for (let i = 0; i < trainerCount - 1; i++) {
-            for (let j = i + 1; j < trainerCount; j++) {
-                simulateBattle(trainers[i], trainers[j]);
-            }
-        }
-    }
-    else if (trainerCount == trainers.length) {
-        for (let i = 0; i < trainers.length - 1; i++) {
-            for (let j = i + 1; j < trainers.length; j++) {
-                simulateBattle(trainers[i], trainers[j]);
-            }
-        }
-    }
-    else {
-        console.log("Invalid number of trainers.");
-    }
-}
-
-// Generate Random Trainer List
-function getRandomTrainer(trainers, trainerCount) {
-    if (trainers.length < trainerCount) {
-        throw new Error("Not enough trainer on the list.");
-    }
-
-    // Shuffle the array
-    const shuffled = trainers.sort(() => Math.random() - 0.5);
-
-    // Get the first `count` elements
-    return shuffled.slice(0, trainerCount);
 }
 
 //  Randomly select two trainers for the battle
@@ -276,21 +295,3 @@ let secondTrainer;
 do {
     secondTrainer = trainers[Math.floor(Math.random() * trainers.length)];
 } while (secondTrainer === firstTrainer);
-
-// Randomly select number of trainer from the list based on user's input
-// Generate Random Trainer List
-function getRandomTrainer(trainers, trainerCount) {
-    if (trainers.length < trainerCount) {
-        throw new Error('Not enough elements in the array');
-    }
-
-    // Shuffle the array
-    const shuffled = trainers.sort(() => Math.random() - 0.5);
-
-    // Get the first `count` elements
-    return shuffled.slice(0, trainerCount);
-}
-
-while (true) {
-    simulateTournament(trainers);
-};
